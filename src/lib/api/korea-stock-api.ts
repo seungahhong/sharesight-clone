@@ -42,11 +42,15 @@ export interface KoreanStockApiResponse {
 export async function searchKoreanStocks(query: string): Promise<KoreanStockPriceInfo[]> {
     if (!query || !API_KEY) return [];
 
-    // Get today's date in YYYYMMDD format
+    // Get date range: Last 7 days to ensure we hit a trading day
     const today = new Date();
-    const basDt = today.toISOString().slice(0, 10).replace(/-/g, '');
+    const weekAgo = new Date();
+    weekAgo.setDate(today.getDate() - 7);
 
-    const url = `${BASE_URL}/getStockPriceInfo?serviceKey=${API_KEY}&resultType=json&numOfRows=100&likeItmsNm=${encodeURIComponent(query)}&basDt=${basDt}`;
+    const endBasDt = today.toISOString().slice(0, 10).replace(/-/g, '');
+    const beginBasDt = weekAgo.toISOString().slice(0, 10).replace(/-/g, '');
+
+    const url = `${BASE_URL}/getStockPriceInfo?serviceKey=${API_KEY}&resultType=json&numOfRows=100&likeItmsNm=${encodeURIComponent(query)}&beginBasDt=${beginBasDt}&endBasDt=${endBasDt}`;
 
     try {
         const res = await fetch(url, { cache: 'no-store' });
@@ -60,10 +64,68 @@ export async function searchKoreanStocks(query: string): Promise<KoreanStockPric
         const items = data.response.body.items?.item;
         if (!items) return [];
 
-        // API returns single object if only one result, array if multiple
-        return Array.isArray(items) ? items : [items];
+        const rawList = Array.isArray(items) ? items : [items];
+
+        // Deduplicate by srtnCd, keeping the latest entry
+        const latestMap = new Map<string, KoreanStockPriceInfo>();
+        rawList.forEach(item => {
+            if (!latestMap.has(item.srtnCd) || item.basDt > latestMap.get(item.srtnCd)!.basDt) {
+                latestMap.set(item.srtnCd, item);
+            }
+        });
+
+        return Array.from(latestMap.values());
     } catch (error) {
         console.error('Error fetching Korean stocks:', error);
+        return [];
+    }
+}
+
+/**
+ * Get a list of Korean stocks (default list)
+ */
+export async function getStockList(numOfRows: number = 20): Promise<KoreanStockPriceInfo[]> {
+    if (!API_KEY) return [];
+
+    // Get date range: Last 7 days
+    const today = new Date();
+    const weekAgo = new Date();
+    weekAgo.setDate(today.getDate() - 7);
+
+    const endBasDt = today.toISOString().slice(0, 10).replace(/-/g, '');
+    const beginBasDt = weekAgo.toISOString().slice(0, 10).replace(/-/g, '');
+
+    // Fetch without likeItmsNm to get a list
+    // We need to fetch enough rows to get unique companies, as we might get duplicates across days.
+    // Let's fetch more rows (e.g. 100) and then slice to numOfRows after deduplication.
+    const fetchRows = numOfRows * 5;
+    const url = `${BASE_URL}/getStockPriceInfo?serviceKey=${API_KEY}&resultType=json&numOfRows=${fetchRows}&beginBasDt=${beginBasDt}&endBasDt=${endBasDt}`;
+
+    try {
+        const res = await fetch(url, { cache: 'no-store' });
+        const data: KoreanStockApiResponse = await res.json();
+
+        if (data.response.header.resultCode !== '00') {
+            console.error('Korean Stock API Error:', data.response.header.resultMsg);
+            return [];
+        }
+
+        const items = data.response.body.items?.item;
+        if (!items) return [];
+
+        const rawList = Array.isArray(items) ? items : [items];
+
+        // Deduplicate by srtnCd, keeping the latest entry
+        const latestMap = new Map<string, KoreanStockPriceInfo>();
+        rawList.forEach(item => {
+            if (!latestMap.has(item.srtnCd) || item.basDt > latestMap.get(item.srtnCd)!.basDt) {
+                latestMap.set(item.srtnCd, item);
+            }
+        });
+
+        return Array.from(latestMap.values()).slice(0, numOfRows);
+    } catch (error) {
+        console.error('Error fetching stock list:', error);
         return [];
     }
 }
@@ -109,7 +171,7 @@ export async function getKoreanStockHistory(
 ): Promise<KoreanStockPriceInfo[]> {
     if (!stockCode || !API_KEY) return [];
 
-    const url = `${BASE_URL}/getStockPriceInfo?serviceKey=${API_KEY}&resultType=json&numOfRows=100&srtnCd=${stockCode}&beginBasDt=${startDate}&endBasDt=${endDate}`;
+    const url = `${BASE_URL}/getStockPriceInfo?serviceKey=${API_KEY}&resultType=json&numOfRows=1000&srtnCd=${stockCode}&beginBasDt=${startDate}&endBasDt=${endDate}`;
 
     try {
         const res = await fetch(url, { cache: 'no-store' });
@@ -124,6 +186,7 @@ export async function getKoreanStockHistory(
         if (!items) return [];
 
         const result = Array.isArray(items) ? items : [items];
+
         // Sort by date descending (newest first)
         return result.sort((a, b) => b.basDt.localeCompare(a.basDt));
     } catch (error) {
