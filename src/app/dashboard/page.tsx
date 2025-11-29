@@ -212,7 +212,6 @@ export default function Dashboard() {
                                     symbol={selectedStocks.map(code =>
                                         POPULAR_STOCKS.find(s => s.code === code)?.name || code
                                     ).join(', ')}
-                                    multiLine={selectedStocks.length > 1}
                                 />
                             ) : (
                                 <div className="text-center text-gray-500 py-12">
