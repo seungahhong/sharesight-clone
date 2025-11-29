@@ -127,8 +127,8 @@ export default function Dashboard() {
                             <button
                                 onClick={() => setViewMode('chart')}
                                 className={`px-4 py-2 rounded-lg font-medium ${viewMode === 'chart'
-                                        ? 'bg-teal-600 text-white'
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    ? 'bg-teal-600 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                     }`}
                             >
                                 차트
@@ -136,13 +136,13 @@ export default function Dashboard() {
                             <button
                                 onClick={() => setViewMode('table')}
                                 className={`px-4 py-2 rounded-lg font-medium ${viewMode === 'table'
-                                        ? 'bg-teal-600 text-white'
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    ? 'bg-teal-600 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                     }`}
                             >
                                 표
                             </button>
-                            <StockSearchWrapper onSelect={handleAddStock} />
+                            <StockSearchWrapper />
                         </div>
                     </div>
                 </header>
@@ -161,8 +161,8 @@ export default function Dashboard() {
                                     }
                                 }}
                                 className={`px-3 py-1 rounded-full text-sm font-medium ${selectedStocks.includes(stock.code)
-                                        ? 'bg-teal-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'bg-teal-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
                                 {stock.name}
@@ -263,12 +263,12 @@ export default function Dashboard() {
                                                 {row.price}원
                                             </td>
                                             <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${parseFloat(row.change) > 0 ? 'text-red-600' :
-                                                    parseFloat(row.change) < 0 ? 'text-blue-600' : 'text-gray-900'
+                                                parseFloat(row.change) < 0 ? 'text-blue-600' : 'text-gray-900'
                                                 }`}>
                                                 {parseFloat(row.change) > 0 ? '+' : ''}{parseInt(row.change).toLocaleString()}
                                             </td>
                                             <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${parseFloat(row.changeRate) > 0 ? 'text-red-600' :
-                                                    parseFloat(row.changeRate) < 0 ? 'text-blue-600' : 'text-gray-900'
+                                                parseFloat(row.changeRate) < 0 ? 'text-blue-600' : 'text-gray-900'
                                                 }`}>
                                                 {parseFloat(row.changeRate) > 0 ? '+' : ''}{row.changeRate}%
                                             </td>
