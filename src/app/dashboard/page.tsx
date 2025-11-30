@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout"
 import StockSearchWrapper from "@/components/StockSearchWrapper"
 import StockChart from "@/components/StockChart"
 import CompanySelector from "@/components/CompanySelector"
+import StockDataTable from "@/components/StockDataTable"
 import { getDailySeriesAction } from "@/app/actions"
 import { KoreanStockPriceInfo } from "@/lib/api/korea-stock-api"
 
@@ -37,22 +38,23 @@ export default function Dashboard() {
                 console.error('Failed to parse selectedStocks from localStorage', e)
             }
         } else {
-            // Default if nothing saved? Or just empty.
-            // User asked to "show companies provided by public data portal... and let user select".
-            // So maybe start empty or with one example if we want.
-            // Let's start empty to encourage selection, or maybe Samsung as example.
-            // But user said "selected data to localstorage... if reset... delete and select again".
-            // So empty is fine for reset state.
-            // Let's add Samsung as a default if absolutely nothing, or just empty.
-            // I'll start with Samsung if empty to show something.
-            // Actually, better to start empty if that's the "reset" state.
-            // But for first visit, empty might look broken.
-            // I'll check if it's the *first* visit.
-            // For now, let's default to Samsung if localStorage is null (not just empty array).
             if (saved === null) {
                 setSelectedStocks([{ code: "005930", name: "삼성전자" }])
             }
         }
+
+        // Load viewMode from localStorage
+        const savedViewMode = localStorage.getItem('viewMode')
+        if (savedViewMode && (savedViewMode === 'chart' || savedViewMode === 'table')) {
+            setViewMode(savedViewMode as 'chart' | 'table')
+        }
+
+        // Load timeRange from localStorage
+        const savedTimeRange = localStorage.getItem('timeRange')
+        if (savedTimeRange && (['1week', '1month', '1year'].includes(savedTimeRange))) {
+            setTimeRange(savedTimeRange as TimeRange)
+        }
+
         setIsLoaded(true)
     }, [])
 
@@ -62,6 +64,20 @@ export default function Dashboard() {
             localStorage.setItem('selectedStocks', JSON.stringify(selectedStocks))
         }
     }, [selectedStocks, isLoaded])
+
+    // Save viewMode to LocalStorage when it changes
+    useEffect(() => {
+        if (isLoaded) {
+            localStorage.setItem('viewMode', viewMode)
+        }
+    }, [viewMode, isLoaded])
+
+    // Save timeRange to LocalStorage when it changes
+    useEffect(() => {
+        if (isLoaded) {
+            localStorage.setItem('timeRange', timeRange)
+        }
+    }, [timeRange, isLoaded])
 
     // Fetch data for selected stocks when selection or timeRange changes
     useEffect(() => {
@@ -211,6 +227,27 @@ export default function Dashboard() {
         })
         // Sort by date descending (newest first)
         return tableData.sort((a, b) => b.date.localeCompare(a.date))
+    }
+
+    const getStockPerformanceStats = () => {
+        const allData = getTableData()
+        if (allData.length === 0) return null
+
+        // Find top gainer and biggest loser
+        let topGainer = allData[0]
+        let biggestLoser = allData[0]
+
+        allData.forEach(row => {
+            const rate = parseFloat(row.changeRate)
+            if (rate > parseFloat(topGainer.changeRate)) {
+                topGainer = row
+            }
+            if (rate < parseFloat(biggestLoser.changeRate)) {
+                biggestLoser = row
+            }
+        })
+
+        return { topGainer, biggestLoser }
     }
 
     // Pagination is still needed if we have many stocks selected, 
@@ -386,64 +423,8 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            종목명
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            종목코드
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            종가
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            전일대비
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            등락률
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            거래량
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            기준일
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {getPaginatedTableData().map((row) => (
-                                        <tr key={`${row.code}-${row.date}`} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                {row.name}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {row.code}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                                                {row.price}원
-                                            </td>
-                                            <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${parseFloat(row.change) > 0 ? 'text-red-600' :
-                                                parseFloat(row.change) < 0 ? 'text-blue-600' : 'text-gray-900'
-                                                }`}>
-                                                {parseFloat(row.change) > 0 ? '+' : ''}{parseInt(row.change).toLocaleString()}
-                                            </td>
-                                            <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${parseFloat(row.changeRate) > 0 ? 'text-red-600' :
-                                                parseFloat(row.changeRate) < 0 ? 'text-blue-600' : 'text-gray-900'
-                                                }`}>
-                                                {parseFloat(row.changeRate) > 0 ? '+' : ''}{row.changeRate}%
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
-                                                {row.volume}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {row.date.slice(0, 4)}-{row.date.slice(4, 6)}-{row.date.slice(6, 8)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+
+                            <StockDataTable data={getPaginatedTableData()} />
 
                             {/* Pagination Controls */}
                             {getTotalPages() > 1 && (
