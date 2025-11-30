@@ -1,16 +1,20 @@
 'use client'
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface StockChartProps {
-    data: { date: string; close: number }[]
-    symbol: string
+    data: any[]
+    stockNames: string[]
 }
 
-export default function StockChart({ data, symbol }: StockChartProps) {
+const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe', '#00C49F'];
+
+export default function StockChart({ data, stockNames }: StockChartProps) {
     return (
         <div className="h-96 w-full bg-white p-4 rounded-lg shadow">
-            <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">{symbol} Performance</h3>
+            <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">
+                {stockNames.join(', ')} Performance
+            </h3>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                     data={data}
@@ -22,10 +26,36 @@ export default function StockChart({ data, symbol }: StockChartProps) {
                     }}
                 >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
+                    <XAxis
+                        dataKey="date"
+                        tickFormatter={(value) => {
+                            // Format YYYYMMDD to MM/DD
+                            if (value && value.length === 8) {
+                                return `${value.substring(4, 6)}/${value.substring(6, 8)}`
+                            }
+                            return value
+                        }}
+                    />
                     <YAxis domain={['auto', 'auto']} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="close" stroke="#8884d8" activeDot={{ r: 8 }} />
+                    <Tooltip
+                        labelFormatter={(value) => {
+                            if (value && value.length === 8) {
+                                return `${value.substring(0, 4)}-${value.substring(4, 6)}-${value.substring(6, 8)}`
+                            }
+                            return value
+                        }}
+                    />
+                    <Legend />
+                    {stockNames.map((name, index) => (
+                        <Line
+                            key={name}
+                            type="monotone"
+                            dataKey={name}
+                            stroke={COLORS[index % COLORS.length]}
+                            activeDot={{ r: 8 }}
+                            connectNulls
+                        />
+                    ))}
                 </LineChart>
             </ResponsiveContainer>
         </div>

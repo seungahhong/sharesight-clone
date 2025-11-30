@@ -24,6 +24,7 @@ export default function Dashboard() {
     const [isLoaded, setIsLoaded] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
     const itemsPerPage = 10
+    const [tableFilterStock, setTableFilterStock] = useState<string>('all') // 'all' or stock code
 
     // Load from LocalStorage on mount
     useEffect(() => {
@@ -117,13 +118,60 @@ export default function Dashboard() {
         setStocksData(new Map())
     }
 
+    // Helper to process data: Group by date and average if duplicates exist
+    const processStockData = (data: KoreanStockPriceInfo[]) => {
+        if (!data || data.length === 0) return []
+
+        // Group by date
+        const dateGroups = new Map<string, KoreanStockPriceInfo[]>()
+        data.forEach(item => {
+            if (!dateGroups.has(item.basDt)) {
+                dateGroups.set(item.basDt, [])
+            }
+            dateGroups.get(item.basDt)!.push(item)
+        })
+
+        // Calculate average for each date
+        const processedData: any[] = []
+        dateGroups.forEach((items, date) => {
+            const count = items.length
+            if (count === 1) {
+                processedData.push({
+                    clpr: items[0].clpr,
+                    vs: items[0].vs,
+                    fltRt: items[0].fltRt,
+                    trqu: items[0].trqu,
+                    basDt: date
+                })
+            } else {
+                // Average duplicates
+                const totalClpr = items.reduce((sum, item) => sum + parseInt(item.clpr), 0)
+                const totalVs = items.reduce((sum, item) => sum + parseInt(item.vs), 0)
+                const totalFltRt = items.reduce((sum, item) => sum + parseFloat(item.fltRt), 0)
+                const totalTrqu = items.reduce((sum, item) => sum + parseInt(item.trqu), 0)
+
+                processedData.push({
+                    clpr: Math.round(totalClpr / count).toString(),
+                    vs: Math.round(totalVs / count).toString(),
+                    fltRt: (totalFltRt / count).toFixed(2),
+                    trqu: Math.round(totalTrqu / count).toString(),
+                    basDt: date
+                })
+            }
+        })
+
+        // Sort by date descending
+        return processedData.sort((a, b) => b.basDt.localeCompare(a.basDt))
+    }
+
     const getChartData = () => {
         const dateMap = new Map<string, any>()
 
         selectedStocks.forEach(stock => {
             const data = stocksData.get(stock.code)
             if (data) {
-                data.forEach(item => {
+                const processed = processStockData(data)
+                processed.forEach(item => {
                     if (!dateMap.has(item.basDt)) {
                         dateMap.set(item.basDt, { date: item.basDt })
                     }
@@ -138,17 +186,23 @@ export default function Dashboard() {
 
     const getTableData = () => {
         const tableData: any[] = []
-        selectedStocks.forEach(stock => {
+
+        // Filter stocks based on tableFilterStock
+        const stocksToShow = tableFilterStock === 'all'
+            ? selectedStocks
+            : selectedStocks.filter(s => s.code === tableFilterStock)
+
+        stocksToShow.forEach(stock => {
             const data = stocksData.get(stock.code)
             if (data && data.length > 0) {
-                // Show all data points, not just the latest
-                data.forEach(item => {
+                const processed = processStockData(data)
+                processed.forEach(item => {
                     tableData.push({
                         code: stock.code,
                         name: stock.name,
                         price: parseInt(item.clpr).toLocaleString(),
                         change: item.vs,
-                        changeRate: item.fltRt,
+                        changeRate: parseFloat(item.fltRt).toFixed(2),
                         volume: parseInt(item.trqu).toLocaleString(),
                         date: item.basDt,
                     })
@@ -159,6 +213,8 @@ export default function Dashboard() {
         return tableData.sort((a, b) => b.date.localeCompare(a.date))
     }
 
+    // Pagination is still needed if we have many stocks selected, 
+    // even if each stock only has 1 row.
     const getPaginatedTableData = () => {
         const allData = getTableData()
         const startIndex = (currentPage - 1) * itemsPerPage
@@ -181,7 +237,7 @@ export default function Dashboard() {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div className="min-w-0 flex-1">
                             <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-                                한국 주식 차트
+                                실시간 한국 주식 표/차트
                             </h2>
                             <p className="mt-1 text-sm text-gray-500">
                                 공공데이터포털 금융위원회 주식시세정보
@@ -242,49 +298,20 @@ export default function Dashboard() {
                                 onSelect={handleAddStock}
                                 selectedCodes={selectedStocks.map(s => s.code)}
                             />
+
+                            {selectedStocks.length > 0 && (
+                                <button
+                                    onClick={handleReset}
+                                    className="px-4 py-2 rounded-lg font-medium bg-red-500 text-white hover:bg-red-600"
+                                >
+                                    초기화
+                                </button>
+                            )}
                         </div>
                     </div>
                 </header>
 
-                {/* 선택된 종목 & 초기화 */}
-                <div className="bg-white shadow rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-sm font-medium text-gray-700">선택된 종목</h3>
-                        {selectedStocks.length > 0 && (
-                            <button
-                                onClick={handleReset}
-                                className="text-xs text-red-500 hover:text-red-700 font-medium"
-                            >
-                                초기화
-                            </button>
-                        )}
-                    </div>
 
-                    {selectedStocks.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                            {selectedStocks.map(stock => (
-                                <div
-                                    key={stock.code}
-                                    className="flex items-center gap-2 px-3 py-1 bg-teal-50 border border-teal-200 rounded-full"
-                                >
-                                    <span className="text-sm font-medium text-teal-900">
-                                        {stock.name} ({stock.code})
-                                    </span>
-                                    <button
-                                        onClick={() => handleRemoveStock(stock.code)}
-                                        className="text-teal-600 hover:text-teal-800"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-sm text-gray-400 py-2">
-                            종목을 추가해주세요.
-                        </div>
-                    )}
-                </div>
 
                 <main>
                     {loading && stocksData.size === 0 && (
@@ -298,7 +325,7 @@ export default function Dashboard() {
                             {selectedStocks.length > 0 ? (
                                 <StockChart
                                     data={getChartData()}
-                                    symbol={selectedStocks.map(s => s.name).join(', ')}
+                                    stockNames={selectedStocks.map(s => s.name)}
                                 />
                             ) : (
                                 <div className="text-center text-gray-500 py-12">
@@ -310,6 +337,55 @@ export default function Dashboard() {
 
                     {!loading && viewMode === 'table' && (
                         <div className="bg-white shadow rounded-lg overflow-hidden">
+                            {/* Company Filter */}
+                            <div className="p-4 border-b border-gray-200">
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <label className="text-sm font-medium text-gray-700">
+                                            종목 선택:
+                                        </label>
+                                        <select
+                                            value={tableFilterStock}
+                                            onChange={(e) => {
+                                                setTableFilterStock(e.target.value)
+                                                setCurrentPage(1) // Reset to first page when filter changes
+                                            }}
+                                            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                        >
+                                            <option value="all">전체 종목</option>
+                                            {selectedStocks.map(stock => (
+                                                <option key={stock.code} value={stock.code}>
+                                                    {stock.name} ({stock.code})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Selected stocks with delete buttons */}
+                                    {selectedStocks.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {selectedStocks.map(stock => (
+                                                <div
+                                                    key={stock.code}
+                                                    className="flex items-center gap-2 px-3 py-1 bg-teal-50 border border-teal-200 rounded-full"
+                                                >
+                                                    <span className="text-sm font-medium text-teal-900">
+                                                        {stock.name} ({stock.code})
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleRemoveStock(stock.code)}
+                                                        className="text-teal-600 hover:text-teal-800 font-bold"
+                                                        title="종목 삭제"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>

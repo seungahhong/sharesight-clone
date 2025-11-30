@@ -10,10 +10,6 @@ function classNames(...classes: string[]) {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const navigation = [
-        { name: 'Dashboard', href: '/dashboard', current: true },
-    ]
-
     return (
         <div className="min-h-full">
             <Disclosure as="nav" className="bg-gray-800">
@@ -23,26 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <div className="flex h-16 items-center justify-between">
                                 <div className="flex items-center">
                                     <div className="flex-shrink-0">
-                                        <span className="text-white font-bold text-xl">한국 주식 차트</span>
-                                    </div>
-                                    <div className="hidden md:block">
-                                        <div className="ml-10 flex items-baseline space-x-4">
-                                            {navigation.map((item) => (
-                                                <Link
-                                                    key={item.name}
-                                                    href={item.href}
-                                                    className={classNames(
-                                                        item.current
-                                                            ? 'bg-gray-900 text-white'
-                                                            : 'text-gray-300 hover:bg-gray-700 hover:text-white',
-                                                        'rounded-md px-3 py-2 text-sm font-medium'
-                                                    )}
-                                                    aria-current={item.current ? 'page' : undefined}
-                                                >
-                                                    {item.name}
-                                                </Link>
-                                            ))}
-                                        </div>
+                                        <span className="text-white font-bold text-xl">실시간 주식 현황</span>
                                     </div>
                                 </div>
                             </div>

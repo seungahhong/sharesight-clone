@@ -140,7 +140,7 @@ export async function getKoreanStockQuote(stockCode: string): Promise<KoreanStoc
     const today = new Date();
     const basDt = today.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const url = `${BASE_URL}/getStockPriceInfo?serviceKey=${API_KEY}&resultType=json&srtnCd=${stockCode}&basDt=${basDt}`;
+    const url = `${BASE_URL}/getStockPriceInfo?serviceKey=${API_KEY}&resultType=json&likeSrtnCd=${stockCode}&basDt=${basDt}`;
 
     try {
         const res = await fetch(url, { cache: 'no-store' });
@@ -171,7 +171,7 @@ export async function getKoreanStockHistory(
 ): Promise<KoreanStockPriceInfo[]> {
     if (!stockCode || !API_KEY) return [];
 
-    const url = `${BASE_URL}/getStockPriceInfo?serviceKey=${API_KEY}&resultType=json&numOfRows=1000&srtnCd=${stockCode}&beginBasDt=${startDate}&endBasDt=${endDate}`;
+    const url = `${BASE_URL}/getStockPriceInfo?serviceKey=${API_KEY}&resultType=json&numOfRows=1000&likeSrtnCd=${stockCode}&beginBasDt=${startDate}&endBasDt=${endDate}`;
 
     try {
         const res = await fetch(url, { cache: 'no-store' });
