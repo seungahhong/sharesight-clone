@@ -21,9 +21,10 @@ export interface StockTableRow {
 
 interface StockDataTableProps {
   data: StockTableRow[];
+  marketType: 'KR' | 'US';
 }
 
-export default function StockDataTable({ data }: StockDataTableProps) {
+export default function StockDataTable({ data, marketType }: StockDataTableProps) {
   return (
     <div className="w-full h-full overflow-auto relative">
       <Table>
@@ -53,7 +54,12 @@ export default function StockDataTable({ data }: StockDataTableProps) {
                 </TableCell>
                 <TableCell className="whitespace-nowrap">{row.code}</TableCell>
                 <TableCell className="text-right whitespace-nowrap">
-                  {row.price}원
+                  {marketType === 'KR'
+                    ? `${row.price}원`
+                    : `$${parseFloat(row.price).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}`}
                 </TableCell>
                 <TableCell
                   className={`text-right font-medium whitespace-nowrap ${parseFloat(row.change) > 0
@@ -64,14 +70,19 @@ export default function StockDataTable({ data }: StockDataTableProps) {
                     }`}
                 >
                   {parseFloat(row.change) > 0 ? '+' : ''}
-                  {parseInt(row.change).toLocaleString()}
+                  {marketType === 'KR'
+                    ? parseInt(row.change).toLocaleString()
+                    : parseFloat(row.change).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                 </TableCell>
                 <TableCell
                   className={`text-right font-medium whitespace-nowrap ${parseFloat(row.changeRate) > 0
-                      ? 'text-red-600 dark:text-red-400'
-                      : parseFloat(row.changeRate) < 0
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-900 dark:text-gray-100'
+                    ? 'text-red-600 dark:text-red-400'
+                    : parseFloat(row.changeRate) < 0
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-gray-900 dark:text-gray-100'
                     }`}
                 >
                   {parseFloat(row.changeRate) > 0 ? '+' : ''}

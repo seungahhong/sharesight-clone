@@ -14,6 +14,7 @@ import {
 interface StockChartProps {
   data: any[];
   stockNames: string[];
+  marketType: 'KR' | 'US';
 }
 
 const COLORS = [
@@ -25,7 +26,7 @@ const COLORS = [
   '#00C49F',
 ];
 
-export default function StockChart({ data, stockNames }: StockChartProps) {
+export default function StockChart({ data, stockNames, marketType }: StockChartProps) {
   return (
     <div className="h-full w-full bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
       <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100 mb-4">

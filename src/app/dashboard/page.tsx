@@ -6,6 +6,7 @@ import StockChart from '@/components/StockChart';
 import CompanySelector from '@/components/CompanySelector';
 import StockDataTable from '@/components/StockDataTable';
 import { getDailySeriesAction } from '@/app/actions';
+import { getUSStockDailySeriesAction } from '@/app/actions-us';
 import { KoreanStockPriceInfo } from '@/lib/api/korea-stock-api';
 
 interface SelectedStock {
@@ -27,20 +28,35 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [tableFilterStock, setTableFilterStock] = useState<string>('all'); // 'all' or stock code
+  const [marketType, setMarketType] = useState<'KR' | 'US'>('KR');
 
   // Load from LocalStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('selectedStocks');
-    if (saved) {
+    // Load market type
+    const savedMarketType = localStorage.getItem('marketType') as 'KR' | 'US';
+    let currentMarket = 'KR';
+    if (savedMarketType && (savedMarketType === 'KR' || savedMarketType === 'US')) {
+      setMarketType(savedMarketType);
+      currentMarket = savedMarketType;
+    }
+
+    // Load stocks for the current market
+    const storageKey = currentMarket === 'US' ? 'selectedStocks_US' : 'selectedStocks_KR';
+    const savedStocks = localStorage.getItem(storageKey);
+
+    if (savedStocks) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedStocks);
         setSelectedStocks(parsed);
       } catch (e) {
-        console.error('Failed to parse selectedStocks from localStorage', e);
+        console.error(`Failed to parse ${storageKey} from localStorage`, e);
       }
     } else {
-      if (saved === null) {
+      // Default stocks
+      if (currentMarket === 'KR') {
         setSelectedStocks([{ code: '005930', name: '삼성전자' }]);
+      } else {
+        setSelectedStocks([]);
       }
     }
 
@@ -66,11 +82,20 @@ export default function Dashboard() {
   }, []);
 
   // Save to LocalStorage whenever selectedStocks changes
+  // Save to LocalStorage whenever selectedStocks changes
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('selectedStocks', JSON.stringify(selectedStocks));
+      const storageKey = marketType === 'US' ? 'selectedStocks_US' : 'selectedStocks_KR';
+      localStorage.setItem(storageKey, JSON.stringify(selectedStocks));
     }
-  }, [selectedStocks, isLoaded]);
+  }, [selectedStocks, isLoaded, marketType]);
+
+  // Save marketType to LocalStorage
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('marketType', marketType);
+    }
+  }, [marketType, isLoaded]);
 
   // Save viewMode to LocalStorage when it changes
   useEffect(() => {
@@ -105,7 +130,7 @@ export default function Dashboard() {
     selectedStocks.forEach((stock) => {
       fetchStockData(stock.code);
     });
-  }, [selectedStocks, timeRange, isLoaded]);
+  }, [selectedStocks, timeRange, isLoaded, marketType]);
 
   const fetchStockData = async (stockCode: string) => {
     setLoading(true);
@@ -114,7 +139,12 @@ export default function Dashboard() {
       if (timeRange === '1week') days = 7;
       if (timeRange === '1month') days = 30;
 
-      const data = await getDailySeriesAction(stockCode, days);
+      const action =
+        marketType === 'KR'
+          ? getDailySeriesAction
+          : getUSStockDailySeriesAction;
+
+      const data = await action(stockCode, days);
       if (data && data.length > 0) {
         setStocksData((prev) => new Map(prev).set(stockCode, data));
       }
@@ -140,8 +170,35 @@ export default function Dashboard() {
 
   const handleReset = () => {
     setSelectedStocks([]);
-    localStorage.removeItem('selectedStocks');
+    const storageKey = marketType === 'US' ? 'selectedStocks_US' : 'selectedStocks_KR';
+    localStorage.removeItem(storageKey);
     setStocksData(new Map());
+  };
+
+  const switchMarket = (newType: 'KR' | 'US') => {
+    if (newType === marketType) return;
+
+    // Load stocks for the new market
+    const storageKey = newType === 'US' ? 'selectedStocks_US' : 'selectedStocks_KR';
+    const savedStocks = localStorage.getItem(storageKey);
+
+    let nextStocks: SelectedStock[] = [];
+    if (savedStocks) {
+      try {
+        nextStocks = JSON.parse(savedStocks);
+      } catch (e) {
+        console.error(`Failed to parse ${storageKey}`, e);
+      }
+    } else {
+      if (newType === 'KR') {
+        nextStocks = [{ code: '005930', name: '삼성전자' }];
+      }
+    }
+
+    // Update both states together to avoid race conditions in effects
+    setMarketType(newType);
+    setSelectedStocks(nextStocks);
+    setStocksData(new Map()); // Clear data for new market
   };
 
   // Helper to process data: Group by date and average if duplicates exist
@@ -294,13 +351,31 @@ export default function Dashboard() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="min-w-0 flex-1">
               <h2 className="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:truncate sm:text-3xl sm:tracking-tight">
-                실시간 한국 주식 표/차트
+                실시간 주식 표/차트
               </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                공공데이터포털 금융위원회 주식시세정보
-              </p>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
+              {/* Market Type Toggle */}
+              <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 mr-2">
+                <button
+                  onClick={() => switchMarket('KR')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${marketType === 'KR'
+                    ? 'bg-white dark:bg-gray-600 text-teal-600 dark:text-teal-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                    }`}
+                >
+                  한국
+                </button>
+                <button
+                  onClick={() => switchMarket('US')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${marketType === 'US'
+                    ? 'bg-white dark:bg-gray-600 text-teal-600 dark:text-teal-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                    }`}
+                >
+                  미국
+                </button>
+              </div>
               {/* Time Range Selector */}
               <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 mr-2">
                 <button
@@ -354,6 +429,7 @@ export default function Dashboard() {
               <CompanySelector
                 onSelect={handleAddStock}
                 selectedCodes={selectedStocks.map((s) => s.code)}
+                marketType={marketType}
               />
 
               {selectedStocks.length > 0 && (
@@ -381,6 +457,7 @@ export default function Dashboard() {
                 <StockChart
                   data={getChartData()}
                   stockNames={selectedStocks.map((s) => s.name)}
+                  marketType={marketType}
                 />
               ) : (
                 <div className="text-center text-gray-500 dark:text-gray-400 py-12">
@@ -442,7 +519,10 @@ export default function Dashboard() {
               </div>
 
               <div className="flex-1 min-h-0 relative">
-                <StockDataTable data={getPaginatedTableData()} />
+                <StockDataTable
+                  data={getPaginatedTableData()}
+                  marketType={marketType}
+                />
               </div>
 
               {/* Pagination Controls */}

@@ -3,13 +3,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { KoreanStockPriceInfo } from '@/lib/api/korea-stock-api'
 import { searchStocksAction, getStockListAction } from '@/app/actions'
+import { searchUSStocksAction } from '@/app/actions-us'
 
 interface CompanySelectorProps {
     onSelect: (stock: KoreanStockPriceInfo) => void
     selectedCodes: string[]
+    marketType: 'KR' | 'US'
 }
 
-export default function CompanySelector({ onSelect, selectedCodes }: CompanySelectorProps) {
+export default function CompanySelector({ onSelect, selectedCodes, marketType }: CompanySelectorProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<KoreanStockPriceInfo[]>([])
@@ -28,18 +30,22 @@ export default function CompanySelector({ onSelect, selectedCodes }: CompanySele
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
-    // Load initial list
+    // Load initial list (only for KR for now, or could fetch trending US)
     useEffect(() => {
         const loadInitial = async () => {
-            try {
-                const list = await getStockListAction(20)
-                setInitialList(list)
-            } catch (error) {
-                console.error('Failed to load initial stock list', error)
+            if (marketType === 'KR') {
+                try {
+                    const list = await getStockListAction(20)
+                    setInitialList(list)
+                } catch (error) {
+                    console.error('Failed to load initial stock list', error)
+                }
+            } else {
+                setInitialList([]) // Clear initial list for US or fetch trending
             }
         }
         loadInitial()
-    }, [])
+    }, [marketType])
 
     // Search
     useEffect(() => {
@@ -51,7 +57,8 @@ export default function CompanySelector({ onSelect, selectedCodes }: CompanySele
 
             setLoading(true)
             try {
-                const data = await searchStocksAction(query)
+                const action = marketType === 'KR' ? searchStocksAction : searchUSStocksAction
+                const data = await action(query)
                 setResults(data)
             } catch (error) {
                 console.error('Search failed', error)
@@ -62,7 +69,7 @@ export default function CompanySelector({ onSelect, selectedCodes }: CompanySele
 
         const debounce = setTimeout(search, 300)
         return () => clearTimeout(debounce)
-    }, [query, initialList])
+    }, [query, initialList, marketType])
 
     return (
         <div className="relative" ref={wrapperRef}>
