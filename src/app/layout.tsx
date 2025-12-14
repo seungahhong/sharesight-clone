@@ -25,9 +25,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${robotoMono.variable} antialiased`}>
-        <Providers>{children}</Providers>{' '}
-        {/* Wrapped children with Providers */}
+      <body
+        className={`${inter.variable} ${robotoMono.variable} antialiased min-h-screen bg-background text-foreground`}
+      >
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

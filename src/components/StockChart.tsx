@@ -27,8 +27,8 @@ const COLORS = [
 
 export default function StockChart({ data, stockNames }: StockChartProps) {
   return (
-    <div className="h-96 w-full bg-white p-4 rounded-lg shadow">
-      <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">
+    <div className="h-full w-full bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100 mb-4">
         주식 차트
       </h3>
       <ResponsiveContainer width="100%" height="100%">

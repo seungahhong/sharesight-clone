@@ -289,47 +289,44 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <header className="bg-white shadow rounded-lg p-6">
+      <div className="flex flex-col h-[calc(100vh-132px)] gap-6">
+        <header className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 flex-shrink-0">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+              <h2 className="text-2xl font-bold leading-7 text-gray-900 dark:text-gray-100 sm:truncate sm:text-3xl sm:tracking-tight">
                 실시간 한국 주식 표/차트
               </h2>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 공공데이터포털 금융위원회 주식시세정보
               </p>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
               {/* Time Range Selector */}
-              <div className="flex bg-gray-100 rounded-lg p-1 mr-2">
+              <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 mr-2">
                 <button
                   onClick={() => setTimeRange('1week')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    timeRange === '1week'
-                      ? 'bg-white text-teal-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${timeRange === '1week'
+                    ? 'bg-white dark:bg-gray-600 text-teal-600 dark:text-teal-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                    }`}
                 >
                   1주
                 </button>
                 <button
                   onClick={() => setTimeRange('1month')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    timeRange === '1month'
-                      ? 'bg-white text-teal-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${timeRange === '1month'
+                    ? 'bg-white dark:bg-gray-600 text-teal-600 dark:text-teal-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                    }`}
                 >
                   1개월
                 </button>
                 <button
                   onClick={() => setTimeRange('1year')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    timeRange === '1year'
-                      ? 'bg-white text-teal-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${timeRange === '1year'
+                    ? 'bg-white dark:bg-gray-600 text-teal-600 dark:text-teal-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                    }`}
                 >
                   1년
                 </button>
@@ -337,21 +334,19 @@ export default function Dashboard() {
 
               <button
                 onClick={() => setViewMode('chart')}
-                className={`px-4 py-2 rounded-lg font-medium ${
-                  viewMode === 'chart'
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                className={`px-4 py-2 rounded-lg font-medium ${viewMode === 'chart'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
               >
                 차트
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`px-4 py-2 rounded-lg font-medium ${
-                  viewMode === 'table'
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                className={`px-4 py-2 rounded-lg font-medium ${viewMode === 'table'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
               >
                 표
               </button>
@@ -373,22 +368,22 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <main>
+        <main className="flex-1 min-h-0">
           {loading && stocksData.size === 0 && (
-            <div className="bg-white p-6 rounded-lg shadow text-center text-gray-500">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow text-center text-gray-500 dark:text-gray-400">
               데이터를 불러오는 중...
             </div>
           )}
 
           {!loading && viewMode === 'chart' && (
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow h-full flex flex-col">
               {selectedStocks.length > 0 ? (
                 <StockChart
                   data={getChartData()}
                   stockNames={selectedStocks.map((s) => s.name)}
                 />
               ) : (
-                <div className="text-center text-gray-500 py-12">
+                <div className="text-center text-gray-500 dark:text-gray-400 py-12">
                   종목을 선택해주세요
                 </div>
               )}
@@ -396,12 +391,12 @@ export default function Dashboard() {
           )}
 
           {!loading && viewMode === 'table' && (
-            <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden h-full flex flex-col">
               {/* Company Filter */}
-              <div className="p-4 border-b border-gray-200">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-3">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       종목 선택:
                     </label>
                     <select
@@ -410,7 +405,7 @@ export default function Dashboard() {
                         setTableFilterStock(e.target.value);
                         setCurrentPage(1); // Reset to first page when filter changes
                       }}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     >
                       <option value="all">전체 종목</option>
                       {selectedStocks.map((stock) => (
@@ -427,14 +422,14 @@ export default function Dashboard() {
                       {selectedStocks.map((stock) => (
                         <div
                           key={stock.code}
-                          className="flex items-center gap-2 px-3 py-1 bg-teal-50 border border-teal-200 rounded-full"
+                          className="flex items-center gap-2 px-3 py-1 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800 rounded-full"
                         >
-                          <span className="text-sm font-medium text-teal-900">
+                          <span className="text-sm font-medium text-teal-900 dark:text-teal-100">
                             {stock.name} ({stock.code})
                           </span>
                           <button
                             onClick={() => handleRemoveStock(stock.code)}
-                            className="text-teal-600 hover:text-teal-800 font-bold"
+                            className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-200 font-bold"
                             title="종목 삭제"
                           >
                             ✕
@@ -446,18 +441,20 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <StockDataTable data={getPaginatedTableData()} />
+              <div className="flex-1 min-h-0 relative">
+                <StockDataTable data={getPaginatedTableData()} />
+              </div>
 
               {/* Pagination Controls */}
               {getTotalPages() > 1 && (
-                <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6 flex-shrink-0">
                   <div className="flex-1 flex justify-between sm:hidden">
                     <button
                       onClick={() =>
                         setCurrentPage((prev) => Math.max(1, prev - 1))
                       }
                       disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       이전
                     </button>
@@ -468,14 +465,14 @@ export default function Dashboard() {
                         )
                       }
                       disabled={currentPage === getTotalPages()}
-                      className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       다음
                     </button>
                   </div>
                   <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm text-gray-700">
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
                         전체{' '}
                         <span className="font-medium">
                           {getTableData().length}
@@ -503,7 +500,7 @@ export default function Dashboard() {
                             setCurrentPage((prev) => Math.max(1, prev - 1))
                           }
                           disabled={currentPage === 1}
-                          className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span className="sr-only">이전</span>
                           <svg
@@ -535,17 +532,16 @@ export default function Dashboard() {
                           .map((page, index, array) => (
                             <React.Fragment key={page}>
                               {index > 0 && array[index - 1] !== page - 1 && (
-                                <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300">
                                   ...
                                 </span>
                               )}
                               <button
                                 onClick={() => setCurrentPage(page)}
-                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                  currentPage === page
-                                    ? 'z-10 bg-teal-50 border-teal-500 text-teal-600'
-                                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                                }`}
+                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
+                                  ? 'z-10 bg-teal-50 dark:bg-teal-900 border-teal-500 text-teal-600 dark:text-teal-400'
+                                  : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                  }`}
                               >
                                 {page}
                               </button>
@@ -558,7 +554,7 @@ export default function Dashboard() {
                             )
                           }
                           disabled={currentPage === getTotalPages()}
-                          className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span className="sr-only">다음</span>
                           <svg

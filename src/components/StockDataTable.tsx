@@ -25,7 +25,7 @@ interface StockDataTableProps {
 
 export default function StockDataTable({ data }: StockDataTableProps) {
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full h-full overflow-auto relative">
       <Table>
         <TableHeader>
           <TableRow>
@@ -56,25 +56,23 @@ export default function StockDataTable({ data }: StockDataTableProps) {
                   {row.price}원
                 </TableCell>
                 <TableCell
-                  className={`text-right font-medium whitespace-nowrap ${
-                    parseFloat(row.change) > 0
-                      ? 'text-red-600'
+                  className={`text-right font-medium whitespace-nowrap ${parseFloat(row.change) > 0
+                      ? 'text-red-600 dark:text-red-400'
                       : parseFloat(row.change) < 0
-                      ? 'text-blue-600'
-                      : 'text-gray-900'
-                  }`}
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-900 dark:text-gray-100'
+                    }`}
                 >
                   {parseFloat(row.change) > 0 ? '+' : ''}
                   {parseInt(row.change).toLocaleString()}
                 </TableCell>
                 <TableCell
-                  className={`text-right font-medium whitespace-nowrap ${
-                    parseFloat(row.changeRate) > 0
-                      ? 'text-red-600'
+                  className={`text-right font-medium whitespace-nowrap ${parseFloat(row.changeRate) > 0
+                      ? 'text-red-600 dark:text-red-400'
                       : parseFloat(row.changeRate) < 0
-                      ? 'text-blue-600'
-                      : 'text-gray-900'
-                  }`}
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-900 dark:text-gray-100'
+                    }`}
                 >
                   {parseFloat(row.changeRate) > 0 ? '+' : ''}
                   {row.changeRate}%
