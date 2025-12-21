@@ -70,6 +70,7 @@ model Holding {
   id          String    @id @default(cuid())
   portfolioId String
   symbol      String
+  name        String?
   quantity    Float
   buyPrice    Float
   buyDate     DateTime

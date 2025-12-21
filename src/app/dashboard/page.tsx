@@ -8,6 +8,10 @@ import StockDataTable from '@/components/StockDataTable';
 import { getDailySeriesAction } from '@/app/actions';
 import { getUSStockDailySeriesAction } from '@/app/actions-us';
 import { KoreanStockPriceInfo } from '@/lib/api/korea-stock-api';
+import { useSession, signIn, signOut } from "next-auth/react";
+import { migrateLocalData } from "@/app/actions/auth-migration";
+import { getUserHoldings, addHolding, removeHolding } from "@/app/actions/holdings";
+import { useRouter } from 'next/navigation';
 
 interface SelectedStock {
   code: string;
@@ -29,9 +33,100 @@ export default function Dashboard() {
   const itemsPerPage = 10;
   const [tableFilterStock, setTableFilterStock] = useState<string>('all'); // 'all' or stock code
   const [marketType, setMarketType] = useState<'KR' | 'US'>('KR');
+  const { data: session, status } = useSession();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [dbHoldings, setDbHoldings] = useState<any[]>([]); // Store fetched holdings
+  const router = useRouter();
 
-  // Load from LocalStorage on mount
+  // Usage Limit & Migration Logic
   useEffect(() => {
+    if (status === 'loading') return;
+
+    if (status === 'unauthenticated') {
+      // Check usage limit
+      const usageCount = parseInt(localStorage.getItem('dashboard_usage_count') || '0', 10);
+      if (usageCount >= 10) {
+        setShowLoginModal(true);
+      } else {
+        localStorage.setItem('dashboard_usage_count', (usageCount + 1).toString());
+      }
+    } else if (status === 'authenticated') {
+      // Fetch holdings from DB
+      getUserHoldings().then((result) => {
+        if (result.success && result.holdings) {
+          setDbHoldings(result.holdings);
+          // Convert holdings to SelectedStock format
+          // Assuming we want to display all holdings regardless of market type initially?
+          // Or we should filter by market type?
+          // The current UI separates KR and US.
+          // But Holding doesn't explicitly store market type (except maybe by symbol format).
+          // However, we can just load them all into selectedStocks?
+          // But selectedStocks is used for both KR and US depending on marketType state.
+          // Wait, the UI switches `selectedStocks` based on `marketType` in `useEffect` (line 84-91 saves it, line 34-82 loads it).
+          // But if we are logged in, we should ignore localStorage and use DB.
+          // So we need to separate KR and US holdings from DB.
+          // Simple heuristic: KR stocks are usually numbers (005930), US stocks are letters (AAPL).
+
+          const krHoldings = result.holdings.filter(h => /^\d+$/.test(h.symbol));
+          const usHoldings = result.holdings.filter(h => !/^\d+$/.test(h.symbol));
+
+          if (marketType === 'KR') {
+            setSelectedStocks(krHoldings.map(h => ({ code: h.symbol, name: h.name || h.symbol })));
+          } else {
+            setSelectedStocks(usHoldings.map(h => ({ code: h.symbol, name: h.name || h.symbol })));
+          }
+        }
+      });
+
+      // Check for local data to migrate
+      const localKR = localStorage.getItem('selectedStocks_KR');
+      const localUS = localStorage.getItem('selectedStocks_US');
+
+      if (localKR || localUS) {
+        const stocksKR = localKR ? JSON.parse(localKR) : [];
+        const stocksUS = localUS ? JSON.parse(localUS) : [];
+
+        if (stocksKR.length > 0 || stocksUS.length > 0) {
+          migrateLocalData(stocksKR, stocksUS).then((result) => {
+            if (result.success) {
+              localStorage.removeItem('selectedStocks_KR');
+              localStorage.removeItem('selectedStocks_US');
+              // Refetch holdings after migration instead of reloading
+              getUserHoldings().then((res) => {
+                if (res.success && res.holdings) {
+                  setDbHoldings(res.holdings);
+                }
+              });
+            }
+          });
+        }
+      }
+    }
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update selectedStocks when dbHoldings or marketType changes (only if authenticated)
+  useEffect(() => {
+    if (status === 'authenticated') {
+      const krHoldings = dbHoldings.filter(h => /^\d+$/.test(h.symbol));
+      const usHoldings = dbHoldings.filter(h => !/^\d+$/.test(h.symbol));
+
+      const newSelection = marketType === 'KR'
+        ? krHoldings.map(h => ({ code: h.symbol, name: h.name || h.symbol }))
+        : usHoldings.map(h => ({ code: h.symbol, name: h.name || h.symbol }));
+
+      // Only update if changed to prevent deep recursion/refetching
+      setSelectedStocks(prev => {
+        const isSame = prev.length === newSelection.length &&
+          prev.every((p, i) => p.code === newSelection[i].code);
+        return isSame ? prev : newSelection;
+      });
+    }
+  }, [dbHoldings, marketType, status]);
+
+  // Load from LocalStorage on mount (only if unauthenticated or loading)
+  useEffect(() => {
+    if (status === 'authenticated') return; // Skip if authenticated
+
     // Load market type
     const savedMarketType = localStorage.getItem('marketType') as 'KR' | 'US';
     let currentMarket = 'KR';
@@ -81,7 +176,6 @@ export default function Dashboard() {
     setIsLoaded(true);
   }, []);
 
-  // Save to LocalStorage whenever selectedStocks changes
   // Save to LocalStorage whenever selectedStocks changes
   useEffect(() => {
     if (isLoaded) {
@@ -155,17 +249,32 @@ export default function Dashboard() {
     }
   };
 
-  const handleAddStock = (stock: KoreanStockPriceInfo) => {
+  const handleAddStock = async (stock: KoreanStockPriceInfo) => {
     if (!selectedStocks.some((s) => s.code === stock.srtnCd)) {
-      setSelectedStocks((prev) => [
-        ...prev,
-        { code: stock.srtnCd, name: stock.itmsNm },
-      ]);
+      // Optimistic update
+      const newStock = { code: stock.srtnCd, name: stock.itmsNm };
+      setSelectedStocks((prev) => [...prev, newStock]);
+
+      if (status === 'authenticated') {
+        const result = await addHolding(newStock);
+        if (!result.success) {
+          console.error("Failed to add holding:", result.message);
+          // Revert on failure if needed, or just let it sync on next fetch
+        }
+      }
     }
   };
 
-  const handleRemoveStock = (stockCode: string) => {
+  const handleRemoveStock = async (stockCode: string) => {
+    // Optimistic update
     setSelectedStocks((prev) => prev.filter((s) => s.code !== stockCode));
+
+    if (status === 'authenticated') {
+      const result = await removeHolding(stockCode);
+      if (!result.success) {
+        console.error("Failed to remove holding:", result.message);
+      }
+    }
   };
 
   const handleReset = () => {
@@ -199,6 +308,11 @@ export default function Dashboard() {
     setMarketType(newType);
     setSelectedStocks(nextStocks);
     setStocksData(new Map()); // Clear data for new market
+
+    // If switching to US and timeRange is 1year, reset to 1month
+    if (newType === 'US' && timeRange === '1year') {
+      setTimeRange('1month');
+    }
   };
 
   // Helper to process data: Group by date and average if duplicates exist
@@ -396,15 +510,17 @@ export default function Dashboard() {
                 >
                   1개월
                 </button>
-                <button
-                  onClick={() => setTimeRange('1year')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${timeRange === '1year'
-                    ? 'bg-white dark:bg-gray-600 text-teal-600 dark:text-teal-400 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-                    }`}
-                >
-                  1년
-                </button>
+                {marketType !== 'US' && (
+                  <button
+                    onClick={() => setTimeRange('1year')}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${timeRange === '1year'
+                      ? 'bg-white dark:bg-gray-600 text-teal-600 dark:text-teal-400 shadow-sm'
+                      : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                      }`}
+                  >
+                    1년
+                  </button>
+                )}
               </div>
 
               <button
@@ -440,6 +556,8 @@ export default function Dashboard() {
                   초기화
                 </button>
               )}
+
+
             </div>
           </div>
         </header>
@@ -660,6 +778,27 @@ export default function Dashboard() {
           )}
         </main>
       </div>
-    </DashboardLayout>
+
+      {/* Login Modal */}
+      {
+        showLoginModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl max-w-md w-full text-center">
+              <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">로그인이 필요합니다</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                무료 사용 횟수(10회)를 모두 사용하셨습니다.<br />
+                계속 사용하시려면 구글 로그인을 해주세요.
+              </p>
+              <button
+                onClick={() => signIn("google")}
+                className="w-full bg-teal-600 text-white py-3 rounded-lg font-bold hover:bg-teal-700 transition-colors"
+              >
+                Google로 로그인
+              </button>
+            </div>
+          </div>
+        )
+      }
+    </DashboardLayout >
   );
 }

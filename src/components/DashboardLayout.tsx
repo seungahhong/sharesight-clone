@@ -2,6 +2,7 @@
 
 import { Disclosure } from '@headlessui/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import UserMenu from '@/components/UserMenu';
 
 export default function DashboardLayout({
   children,
@@ -22,8 +23,9 @@ export default function DashboardLayout({
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center space-x-4">
                   <ThemeToggle />
+                  <UserMenu />
                 </div>
               </div>
             </div>
@@ -34,6 +36,6 @@ export default function DashboardLayout({
       <main>
         <div className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">{children}</div>
       </main>
-    </div>
+    </div >
   );
 }
