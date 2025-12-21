@@ -144,7 +144,7 @@ export async function getStockList(
 }
 
 /**
- * Get stock price info for a specific stock code
+ * Get stock price info for a specific stock code 
  */
 export async function getKoreanStockQuote(
   stockCode: string
