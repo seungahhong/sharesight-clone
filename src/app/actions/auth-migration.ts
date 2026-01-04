@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
 interface LocalStock {
@@ -11,73 +11,82 @@ interface LocalStock {
 
 export async function migrateLocalData(localStocksKR: LocalStock[], localStocksUS: LocalStock[]) {
     const session = await auth();
-    if (!session?.user?.id) {
-        return { success: false, message: "Not authenticated" };
+    if (!session || !session.user || !session.user.email) {
+        return { success: false, message: "Unauthorized" };
     }
 
-    const userId = session.user.id;
-
     try {
-        // 1. Get or create the default portfolio for the user
-        let portfolio = await prisma.portfolio.findFirst({
-            where: { userId },
-        });
+        // 1. Get User ID
+        const { data: userData, error: userError } = await supabase
+            .from('User')
+            .select('id')
+            .eq('email', session.user.email)
+            .single();
 
-        if (!portfolio) {
-            portfolio = await prisma.portfolio.create({
-                data: {
-                    name: "My Portfolio",
-                    userId,
-                },
-            });
+        if (userError || !userData) {
+            console.error('Error finding user for migration:', userError);
+            return { success: false, message: 'User not found' };
         }
 
-        // 2. Add KR stocks
-        for (const stock of localStocksKR) {
-            // Check if holding already exists to avoid duplicates
-            const existing = await prisma.holding.findFirst({
-                where: {
-                    portfolioId: portfolio.id,
-                    symbol: stock.code, // Assuming symbol stores the code
-                },
-            });
+        const userId = userData.id;
 
-            if (!existing) {
-                await prisma.holding.create({
-                    data: {
-                        portfolioId: portfolio.id,
-                        symbol: stock.code,
-                        name: stock.name,
-                        quantity: 1, // Default quantity
-                        buyPrice: 0, // Default price
-                        buyDate: new Date(),
-                    },
-                });
+        // 2. Get or Create Portfolio
+        let { data: portfolioData } = await supabase
+            .from('Portfolio')
+            .select('id')
+            .eq('userId', userId)
+            .single();
+
+        if (!portfolioData) {
+            const { data: newPortfolio, error: createError } = await supabase
+                .from('Portfolio')
+                .insert({ name: 'My Portfolio', userId: userId, updatedAt: new Date().toISOString() })
+                .select('id')
+                .single();
+
+            if (createError) {
+                console.error('Error creating portfolio during migration:', createError);
+                return { success: false, message: 'Failed to create portfolio' };
             }
+            portfolioData = newPortfolio;
         }
 
-        // 3. Add US stocks
-        for (const stock of localStocksUS) {
-            const existing = await prisma.holding.findFirst({
-                where: {
-                    portfolioId: portfolio.id,
-                    symbol: stock.code,
-                },
-            });
+        if (!portfolioData) return { success: false, message: 'Portfolio error' };
 
-            if (!existing) {
-                await prisma.holding.create({
-                    data: {
-                        portfolioId: portfolio.id,
-                        symbol: stock.code,
-                        name: stock.name,
-                        quantity: 1, // Default quantity
-                        buyPrice: 0, // Default price
-                        buyDate: new Date(),
-                    },
-                });
+        const portfolioId = portfolioData.id;
+
+        // Helper to add stocks
+        const addStocks = async (stocks: LocalStock[]) => {
+            for (const stock of stocks) {
+                // Check exist
+                const { data: existing } = await supabase
+                    .from('Holding')
+                    .select('id')
+                    .eq('portfolioId', portfolioId)
+                    .eq('symbol', stock.code)
+                    .single();
+
+                if (!existing) {
+                    await supabase
+                        .from('Holding')
+                        .insert({
+                            portfolioId,
+                            symbol: stock.code,
+                            name: stock.name,
+                            quantity: 1,
+                            buyPrice: 0,
+                            buyDate: new Date().toISOString(),
+                            updatedAt: new Date().toISOString()
+                        });
+                }
             }
-        }
+        };
+
+        // 3. Add KR stocks
+        await addStocks(localStocksKR);
+
+        // 4. Add US stocks
+        await addStocks(localStocksUS);
 
         revalidatePath("/dashboard");
         return { success: true };
